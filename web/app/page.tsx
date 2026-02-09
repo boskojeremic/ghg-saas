@@ -1,7 +1,15 @@
 "use client"
 
 import * as React from "react"
-import Image from "next/image"
+import Image from "next/image";
+
+<Image
+  src="/logo.png"
+  alt="Logo"
+  width={120}
+  height={40}
+/>
+
 import { cn } from "@/lib/utils"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
