@@ -154,7 +154,14 @@ export default function Page() {
             </div>
 
             <div className="min-w-[360px]">
-              <DateRangePicker value={range} onChange={(v) => setRange(clampRange(v.from, v.to))} />
+            <DateRangePicker
+  value={range}
+  onChange={(v) => {
+    if (!v?.from || !v?.to) return
+    setRange(clampRange(v.from, v.to))
+  }}
+/>
+
             </div>
 
             <div className="min-w-[240px]">
