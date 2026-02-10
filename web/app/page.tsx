@@ -130,7 +130,7 @@ export default function Page() {
           <div className="flex items-center gap-4">
             {/* BIGGER logo, transparent-friendly */}
             <div className="relative h-[120px] w-[120px] overflow-hidden rounded-xl bg-transparent ring-1 ring-white/10">
-              <Image
+pnpm               <Image
                 src="/logo.png"
                 alt="DigitalOps Consulting"
                 fill
@@ -488,13 +488,21 @@ function BreakdownPie({ data }: { data: { name: string; value: number; key: stri
           })}
         </Pie>
         <Tooltip
-          contentStyle={{
-            background: "rgba(10, 15, 12, 0.92)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 10,
-          }}
-          formatter={(v: any, name: any) => [`${formatNumber(Number(v))} tCO₂e`, name]}
-        />
+  contentStyle={{
+    background: "rgba(10, 15, 12, 0.92)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 10,
+  }}
+  labelStyle={{
+    color: "#fff",
+    fontWeight: 600,
+  }}
+  itemStyle={{
+    color: "#fff",
+  }}
+  formatter={(v: any, name: any) => [`${formatNumber(Number(v))} tCO₂e`, name]}
+/>
+
         <Legend
   itemSorter={(item: any) => {
     const idx = EMISSION_ORDER.findIndex((x) => x.key === item.dataKey)
