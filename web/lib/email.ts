@@ -1,50 +1,42 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export async function sendInviteEmail(params: {
+type InviteEmailArgs = {
   to: string;
   inviteUrl: string;
   tenantName: string;
   role: string;
-}) {
-  
-  const from = process.env.EMAIL_FROM;
-  if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY missing");
-  if (!from) throw new Error("EMAIL_FROM missing");
+};
 
-  const { to, inviteUrl, tenantName, role } = params;
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
-  const subject = `You're invited to ${tenantName}`;
+export async function sendInviteEmail(args: InviteEmailArgs) {
+  const resend = getResend();
+  if (!resend) {
+    console.warn("RESEND_API_KEY missing - skipping email send");
+    return { ok: false, skipped: true };
+  }
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.4">
-      <h2>Invite to ${tenantName}</h2>
-      <p>You have been invited with role: <b>${role}</b>.</p>
-      <p>
-        Click this link to set your password and activate your access:
-      </p>
-      <p>
-        <a href="${inviteUrl}" style="display:inline-block;padding:10px 14px;background:#111;color:#fff;text-decoration:none;border-radius:8px">
-          Accept Invite
+  const { to, inviteUrl, tenantName, role } = args;
+
+  await resend.emails.send({
+    from: "GHG App <no-reply@dig-ops.com>",
+    to,
+    subject: `Invitation to ${tenantName}`,
+    html: `
+      <p>You have been invited to <b>${tenantName}</b> as <b>${role}</b>.</p>
+      <p style="margin:16px 0">
+        <a href="${inviteUrl}" style="display:inline-block;padding:10px 14px;border-radius:8px;background:#0f766e;color:#fff;text-decoration:none;">
+          Accept invitation
         </a>
       </p>
-      <p style="color:#666;font-size:12px">
-        If you didn’t expect this invite, you can ignore this email.
-      </p>
-      <hr />
-      <p style="font-size:12px;color:#666">
-        Or copy/paste this URL: <br />
-        <code>${inviteUrl}</code>
-      </p>
-    </div>
-  `;
-
-  return resend.emails.send({
-    from,
-    to,
-    subject,
-    html,
+      <p>If the button does not work, open this link:</p>
+      <p><a href="${inviteUrl}">${inviteUrl}</a></p>
+    `,
   });
- 
+
+  return { ok: true };
 }

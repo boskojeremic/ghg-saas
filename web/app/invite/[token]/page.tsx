@@ -1,10 +1,9 @@
 import InviteClient from "./InviteClient";
 
-export default async function InvitePage({
+export default function InvitePage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: { token: string };
 }) {
-  const { token } = await params;
-  return <InviteClient token={token} />;
+  return <InviteClient token={params.token} />;
 }
