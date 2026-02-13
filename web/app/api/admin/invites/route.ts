@@ -31,13 +31,14 @@ export async function POST(req: Request) {
   if (!okAdmin)
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
 
-  // 7 dana validnost
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // 🔒 HARD CODED 7 DAYS VALIDITY
+  const expiresAt = new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000
+  );
 
   const token = generateInviteToken();
   const tokenHash = hashToken(token);
 
-  // upis u bazu
   await db.invite.create({
     data: {
       tenantId,
@@ -48,10 +49,7 @@ export async function POST(req: Request) {
     },
   });
 
-  // 🔹 napravi invite URL PRE emaila
   const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
-
-  let emailed = false;
 
   try {
     const tenant = await db.tenant.findUnique({
@@ -64,18 +62,15 @@ export async function POST(req: Request) {
       inviteUrl,
       tenantName: tenant?.name ?? "GHG App",
       role,
-          });
+    });
 
-    emailed = true;
   } catch (e) {
     console.error("INVITE_EMAIL_FAILED:", e);
-    // ne rušimo invite ako email ne prođe
   }
 
   return NextResponse.json({
     ok: true,
     inviteUrl,
     expiresAt,
-    emailed,
   });
 }
