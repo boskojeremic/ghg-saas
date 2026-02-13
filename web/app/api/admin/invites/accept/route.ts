@@ -11,10 +11,17 @@ export async function POST(req: Request) {
   const password = String(body?.password || "");
 
   if (!token || !password) {
-    return NextResponse.json({ ok: false, error: "BAD_REQUEST" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "BAD_REQUEST" },
+      { status: 400 }
+    );
   }
+
   if (password.length < 8) {
-    return NextResponse.json({ ok: false, error: "PASSWORD_MIN_8_CHARS" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "PASSWORD_MIN_8_CHARS" },
+      { status: 400 }
+    );
   }
 
   const tokenHash = hashToken(token);
@@ -23,16 +30,23 @@ export async function POST(req: Request) {
     where: {
       tokenHash,
       acceptedAt: null,
-      expiresAt: { gt: new Date() },
+      expiresAt: { gt: new Date() }, // ✔ validacija isteka
     },
-    select: { id: true, tenantId: true, email: true, role: true },
+    select: {
+      id: true,
+      tenantId: true,
+      email: true,
+      role: true,
+    },
   });
 
   if (!invite) {
-    return NextResponse.json({ ok: false, error: "INVALID_OR_EXPIRED_INVITE" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "INVALID_OR_EXPIRED_INVITE" },
+      { status: 404 }
+    );
   }
 
-  // 1) upsert user
   const passwordHash = await bcrypt.hash(password, 10);
 
   const user = await db.user.upsert({
@@ -49,10 +63,17 @@ export async function POST(req: Request) {
     select: { id: true, email: true },
   });
 
-  // 2) membership (ako već postoji, ne ruši se)
   await db.membership.upsert({
-    where: { tenantId_userId: { tenantId: invite.tenantId, userId: user.id } },
-    update: { role: invite.role, status: "ACTIVE" },
+    where: {
+      tenantId_userId: {
+        tenantId: invite.tenantId,
+        userId: user.id,
+      },
+    },
+    update: {
+      role: invite.role,
+      status: "ACTIVE",
+    },
     create: {
       tenantId: invite.tenantId,
       userId: user.id,
@@ -61,7 +82,6 @@ export async function POST(req: Request) {
     },
   });
 
-  // 3) mark invite accepted
   await db.invite.update({
     where: { id: invite.id },
     data: { acceptedAt: new Date() },

@@ -34,11 +34,10 @@ export async function POST(req: Request) {
   const email = String(body.email || "").trim().toLowerCase();
   const role = String(body.role || "VIEWER");
 
-  // ✅ ADMIN INPUT (obavezno)
   const validityDays = clampInt(body.validityDays, 1, 365);
   if (validityDays === null) {
     return NextResponse.json(
-      { error: "VALIDITY_DAYS_REQUIRED", hint: "validityDays must be 1..365" },
+      { error: "VALIDITY_DAYS_REQUIRED" },
       { status: 400 }
     );
   }
@@ -52,7 +51,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
-  const expiresAt = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(
+    Date.now() + validityDays * 24 * 60 * 60 * 1000
+  );
 
   const token = generateInviteToken();
   const tokenHash = hashToken(token);
@@ -69,8 +70,6 @@ export async function POST(req: Request) {
 
   const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
 
-  let emailed = false;
-
   try {
     const tenant = await db.tenant.findUnique({
       where: { id: tenantId },
@@ -82,11 +81,8 @@ export async function POST(req: Request) {
       inviteUrl,
       tenantName: tenant?.name ?? "GHG App",
       role,
-      expiresAt,
-      expiresInDays: validityDays,
     });
 
-    emailed = true;
   } catch (e) {
     console.error("INVITE_EMAIL_FAILED:", e);
   }
@@ -95,7 +91,5 @@ export async function POST(req: Request) {
     ok: true,
     inviteUrl,
     expiresAt,
-    expiresInDays: validityDays,
-    emailed,
   });
 }
