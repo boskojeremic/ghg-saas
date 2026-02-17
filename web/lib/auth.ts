@@ -1,5 +1,5 @@
-import NextAuth, { type NextAuthOptions } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import type { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcrypt";
 import { db } from "@/lib/db";
@@ -7,30 +7,30 @@ import { db } from "@/lib/db";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   session: { strategy: "jwt" },
+  secret: process.env.NEXTAUTH_SECRET,
+  pages: { signIn: "/login" },
+
   providers: [
-    Credentials({
+    CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const email = String(credentials?.email || "").toLowerCase().trim();
+        const password = String(credentials?.password || "");
 
-        const user = await db.user.findUnique({
-          where: { email: String(credentials.email).toLowerCase() },
-        });
+        if (!email || !password) return null;
 
+        const user = await db.user.findUnique({ where: { email } });
         if (!user?.passwordHash) return null;
 
-        const ok = await bcrypt.compare(String(credentials.password), user.passwordHash);
+        const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
 
         return { id: user.id, email: user.email, name: user.name ?? undefined };
       },
     }),
   ],
-  pages: { signIn: "/login" },
 };
-
-export default NextAuth(authOptions);
