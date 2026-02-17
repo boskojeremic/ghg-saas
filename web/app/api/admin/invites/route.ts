@@ -7,7 +7,10 @@ import { requireAdmin } from "@/lib/rbac";
 import { sendInviteEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/url";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
+  console.log("INVITES_ROUTE_HIT");
   const session = (await getServerSession(authOptions as any)) as any;
   if (!session?.user?.email) {
     return NextResponse.json({ error: "UNAUTH" }, { status: 401 });
@@ -56,12 +59,15 @@ export async function POST(req: Request) {
   const inviteUrl = `${await getBaseUrl()}/invite/${token}`;
 
 
-  let emailed = false;
+    let emailed = false;
+
   try {
     const tenant = await db.tenant.findUnique({
       where: { id: tenantId },
       select: { name: true },
     });
+
+    console.log("INVITES_SENDING_EMAIL", { email, tenantId });
 
     await sendInviteEmail({
       to: email,
@@ -71,9 +77,11 @@ export async function POST(req: Request) {
     });
 
     emailed = true;
-  } catch (e) {
-    console.error("INVITE_EMAIL_FAILED:", e);
+  } catch (e: any) {
+    console.error("INVITE_EMAIL_FAILED:", e?.message ?? e, e);
   }
+
+
 
   return NextResponse.json({
     ok: true,
