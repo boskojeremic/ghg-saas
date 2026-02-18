@@ -10,15 +10,13 @@ type InviteEmailArgs = {
 function getResend() {
   const key = process.env.RESEND_API_KEY;
 
-  // Hard fail in production so we don't silently "skip"
-  if (!key) {
-    const msg = "RESEND_API_KEY is missing";
-    console.error("[EMAIL]", msg, { nodeEnv: process.env.NODE_ENV });
-    throw new Error(msg);
-  }
+  console.log("[EMAIL] RESEND_API_KEY present:", !!key);
+  console.log("[EMAIL] RESEND_API_KEY length:", key ? key.length : 0);
 
+  if (!key) return null;
   return new Resend(key);
 }
+
 
 export async function sendInviteEmail(args: InviteEmailArgs) {
   console.log("[EMAIL] sendInviteEmail HIT", {
