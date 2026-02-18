@@ -100,6 +100,10 @@ export async function POST(req: Request) {
     const token = generateInviteToken();
     const tokenHash = hashToken(token);
 
+    console.log("[INVITES_CREATE] token:", token);
+console.log("[INVITES_CREATE] tokenHash:", tokenHash);
+
+
     const invite = await db.invite.create({
       data: {
         tenantId,
