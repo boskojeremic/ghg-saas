@@ -9,6 +9,41 @@ import { getBaseUrl } from "@/lib/url";
 
 export const runtime = "nodejs";
 
+type ValidityUnit = "DAYS" | "MONTHS" | "YEARS";
+
+function clampInt(v: unknown, min: number, max: number) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  const i = Math.trunc(n);
+  if (i < min || i > max) return null;
+  return i;
+}
+
+function addMonthsSafe(d: Date, months: number) {
+  const x = new Date(d);
+  const day = x.getDate();
+  x.setMonth(x.getMonth() + months);
+  // handle Jan 31 + 1 month -> clamp to last day
+  if (x.getDate() < day) x.setDate(0);
+  return x;
+}
+
+function addYearsSafe(d: Date, years: number) {
+  const x = new Date(d);
+  const m = x.getMonth();
+  x.setFullYear(x.getFullYear() + years);
+  // handle Feb 29 rollover
+  if (x.getMonth() !== m) x.setDate(0);
+  return x;
+}
+
+function computeExpiresAt(now: Date, validity: { amount: number; unit: ValidityUnit }) {
+  const { amount, unit } = validity;
+  if (unit === "DAYS") return new Date(now.getTime() + amount * 24 * 60 * 60 * 1000);
+  if (unit === "MONTHS") return addMonthsSafe(now, amount);
+  return addYearsSafe(now, amount);
+}
+
 export async function POST(req: Request) {
   console.log("[INVITES] ROUTE_HIT");
 
@@ -50,8 +85,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
-    // 7 days
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // ✅ validity: accept { validity: { amount, unit } } OR fallback to 7 days
+    const rawAmount = clampInt(body?.validity?.amount, 1, 3650);
+    const rawUnit = String(body?.validity?.unit || "").toUpperCase();
+    const unitOk = rawUnit === "DAYS" || rawUnit === "MONTHS" || rawUnit === "YEARS";
+
+    const amount = rawAmount ?? 7; // default 7 days
+    const unit = (unitOk ? rawUnit : "DAYS") as ValidityUnit;
+
+    const expiresAt = computeExpiresAt(new Date(), { amount, unit });
+
+    console.log("[INVITES] validity/expiresAt:", { amount, unit, expiresAt: expiresAt.toISOString() });
 
     const token = generateInviteToken();
     const tokenHash = hashToken(token);
@@ -104,11 +148,11 @@ export async function POST(req: Request) {
       console.error("[INVITES] INVITE_EMAIL_FAILED:", e);
     }
 
-    // NOTE: privremeno vraćamo emailError radi debug-a
     return NextResponse.json({
       ok: true,
       inviteUrl,
       expiresAt,
+      validity: { amount, unit },
       emailed,
       emailError,
     });
