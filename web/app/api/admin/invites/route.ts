@@ -115,9 +115,9 @@ export async function POST(req: Request) {
 
     console.log("[INVITES] invite created:", invite.id);
 
-    const baseUrl = await getBaseUrl();
-    const inviteUrl = `${baseUrl}/invite/${token}`;
-    console.log("[INVITES] baseUrl/inviteUrl:", { baseUrl, inviteUrl });
+    const baseUrl = "https://app.dig-ops.com"; // production domain
+const inviteUrl = `${baseUrl}/invite/${token}`;
+
 
     let emailed = false;
     let emailError: string | null = null;
