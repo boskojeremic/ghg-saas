@@ -2,33 +2,57 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashToken } from "@/lib/inviteToken";
 
+export const runtime = "nodejs";
+
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token") || "";
+  try {
+    const url = new URL(req.url);
+    const token = String(url.searchParams.get("token") || "").trim(); // ✅ trim
 
-  if (!token) {
-    return NextResponse.json({ ok: false, error: "MISSING_TOKEN" }, { status: 400 });
+    if (!token) {
+      return NextResponse.json({ ok: false, error: "MISSING_TOKEN" }, { status: 400 });
+    }
+
+    const tokenHash = hashToken(token);
+
+    // ✅ First fetch by tokenHash only so we can return correct reason
+    const invite = await db.invite.findFirst({
+      where: { tokenHash },
+      select: {
+        email: true,
+        role: true,
+        expiresAt: true,
+        acceptedAt: true,
+        tenant: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    if (!invite) {
+      return NextResponse.json({ ok: false, error: "INVALID_TOKEN" }, { status: 404 });
+    }
+
+    if (invite.acceptedAt) {
+      return NextResponse.json({ ok: false, error: "INVITE_ALREADY_USED" }, { status: 400 });
+    }
+
+    if (invite.expiresAt.getTime() <= Date.now()) {
+      return NextResponse.json({ ok: false, error: "INVITE_EXPIRED" }, { status: 400 });
+    }
+
+    // ✅ keep response shape as your InviteClient expects:
+    // d.email, d.role, d.tenant.name, d.tenant.code
+    return NextResponse.json({
+      ok: true,
+      email: invite.email,
+      role: invite.role,
+      expiresAt: invite.expiresAt,
+      tenant: invite.tenant,
+    });
+  } catch (e: any) {
+    console.error("[INVITES_VERIFY] ERROR:", e);
+    return NextResponse.json(
+      { ok: false, error: "SERVER_ERROR", details: e?.message ?? String(e) },
+      { status: 500 }
+    );
   }
-
-  const tokenHash = hashToken(token);
-
-  const invite = await db.invite.findFirst({
-    where: {
-      tokenHash,
-      acceptedAt: null,
-      expiresAt: { gt: new Date() },
-    },
-    select: {
-      email: true,
-      role: true,
-      expiresAt: true,
-      tenant: { select: { id: true, name: true, code: true } },
-    },
-  });
-
-  if (!invite) {
-    return NextResponse.json({ ok: false, error: "INVALID_OR_EXPIRED_INVITE" }, { status: 404 });
-  }
-
-  return NextResponse.json({ ok: true, ...invite });
 }
