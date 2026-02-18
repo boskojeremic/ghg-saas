@@ -10,6 +10,21 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   pages: { signIn: "/login" },
 
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -29,7 +44,6 @@ export const authOptions: NextAuthOptions = {
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
 
-        // IMPORTANT: include id so it can be persisted in JWT/session
         return { id: user.id, email: user.email, name: user.name ?? undefined };
       },
     }),
@@ -37,14 +51,12 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user }) {
-      // On first login, persist the user id into the token
       if (user) {
         token.id = (user as any).id;
       }
       return token;
     },
     async session({ session, token }) {
-      // Expose id on the session so API routes can do RBAC by userId
       if (session.user) {
         (session.user as any).id = token.id as string | undefined;
       }
