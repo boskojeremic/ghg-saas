@@ -24,7 +24,7 @@ export async function sendInviteEmail(args: InviteEmailArgs) {
   const { to, inviteUrl, tenantName, role } = args;
 
   const payload = {
-    from: "GHG App <no-reply@dig-ops.com>",
+    from: "GHG App <no-reply@mail.dig-ops.com>",
     to,
     subject: `Invitation to ${tenantName}`,
     html: `
