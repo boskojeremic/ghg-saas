@@ -105,15 +105,16 @@ console.log("[INVITES_CREATE] tokenHash:", tokenHash);
 
 
     const invite = await db.invite.create({
-      data: {
-        tenantId,
-        email,
-        role: role as any,
-        tokenHash,
-        expiresAt,
-      },
-      select: { id: true },
-    });
+  data: {
+    tenantId,
+    email,
+    role: role as any,
+    tokenHash,
+    expiresAt,
+  },
+  select: { id: true, createdAt: true, expiresAt: true },
+});
+
 
     console.log("[INVITES] invite created:", invite.id);
 
@@ -124,11 +125,11 @@ console.log("[INVITES_CREATE] tokenHash:", tokenHash);
     let emailed = false;
     let emailError: string | null = null;
 
-    try {
-      const tenant = await db.tenant.findUnique({
-        where: { id: tenantId },
-        select: { name: true },
-      });
+    const tenant = await db.tenant.findUnique({
+  where: { id: tenantId },
+  select: { name: true, code: true },
+});
+
 
       console.log("[INVITES] SENDING_EMAIL", {
         to: email,
@@ -138,12 +139,19 @@ console.log("[INVITES_CREATE] tokenHash:", tokenHash);
         hasResendKey: !!process.env.RESEND_API_KEY,
       });
 
-      await sendInviteEmail({
-        to: email,
-        inviteUrl,
-        tenantName: tenant?.name ?? "GHG App",
-        role,
-      });
+     await sendInviteEmail({
+  to: email,
+  inviteUrl,
+  tenantName: tenant?.name ?? "GHG App",
+  tenantCode: tenant?.code ?? undefined,
+  role,
+  productName: "IFlowX",
+  licenseStart: invite.createdAt,
+  licenseEnd: invite.expiresAt,
+  issuedTo: email,
+  issuedBy: "GHG App Admin",
+});
+
 
       emailed = true;
       console.log("[INVITES] EMAIL_SENT_OK");
