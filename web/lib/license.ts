@@ -1,7 +1,18 @@
 import { db } from "./db";
 
+type LicenseRow = {
+  effectiveEndsAt: Date | null;
+  licenseState:
+    | "TENANT_NO_LICENSE"
+    | "TENANT_LICENSE_INACTIVE"
+    | "USER_NO_ACCESS"
+    | "USER_ACCESS_INACTIVE"
+    | "ACTIVE";
+};
+
 export async function checkUserLicense(email: string) {
-  const result = await db.$queryRawUnsafe(`
+  const result = await db.$queryRawUnsafe<LicenseRow[]>(
+    `
     SELECT
       LEAST(t."licenseEndsAt", m."accessEndsAt") AS "effectiveEndsAt",
       CASE
@@ -16,7 +27,9 @@ export async function checkUserLicense(email: string) {
     JOIN "Tenant" t ON t."id" = m."tenantId"
     WHERE u."email" = $1
     LIMIT 1
-  `, email);
+    `,
+    email
+  );
 
-  return result?.[0] ?? null;
+  return result[0] ?? null;
 }
