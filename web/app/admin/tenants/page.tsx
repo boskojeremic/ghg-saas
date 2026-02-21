@@ -113,7 +113,7 @@ export default function TenantsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 text-white space-y-6">
+    <div className="max-w-[1400px] mx-auto p-6 text-white space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Tenants</h1>
@@ -233,7 +233,7 @@ export default function TenantsPage() {
                       )}
                     </td>
 
-                    <td className="p-3 text-right whitespace-nowrap">
+                    <td className="p-3 text-right whitespace-nowrap pl-25">
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => saveTenant(t)}
