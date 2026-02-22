@@ -26,6 +26,8 @@ model Tenant {
   readings        MeasurementReading[]
   members         Membership[]
   periods         ReportingPeriod[]
+  tenantPlatforms TenantPlatform[]
+  tenantModules   TenantModule[]
 
   @@index([licenseEndsAt], map: "idx_tenant_license_end")
 }
@@ -333,4 +335,99 @@ enum ReadingQuality {
   GOOD
   BAD
   UNCERTAIN
+}
+
+enum TenantRole {
+  TENANT_ADMIN
+  TENANT_USER
+}
+
+model Industry {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  platforms Platform[]
+}
+
+model Platform {
+  id         String   @id @default(cuid())
+  industryId String
+  code       String
+  name       String
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(100)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  industry        Industry         @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  modules         Module[]
+  tenantPlatforms TenantPlatform[]
+
+  @@unique([industryId, code])
+  @@index([industryId])
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  platformId  String
+  code        String
+  name        String
+  description String?
+  routePath   String? // npr "/og/ghg"
+  isAddon     Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  platform      Platform       @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  tenantModules TenantModule[]
+
+  @@unique([platformId, code])
+  @@index([platformId])
+}
+
+model TenantPlatform {
+  id         String    @id @default(cuid())
+  tenantId   String
+  platformId String
+  status     String    @default("ACTIVE")
+  startsAt   DateTime? @db.Timestamp(6)
+  endsAt     DateTime? @db.Timestamp(6)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  platform Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, platformId])
+  @@index([tenantId])
+  @@index([platformId])
+}
+
+model TenantModule {
+  id        String             @id @default(cuid())
+  tenantId  String
+  moduleId  String
+  status    TenantModuleStatus @default(ACTIVE)
+  startsAt  DateTime?          @db.Timestamp(6)
+  endsAt    DateTime?          @db.Timestamp(6)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, moduleId])
+  @@index([tenantId])
+  @@index([moduleId])
+}
+
+enum TenantModuleStatus {
+  ACTIVE
+  DISABLED
 }

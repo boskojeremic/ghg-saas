@@ -18,16 +18,16 @@ export default async function CoreAdminLayout({ children }: { children: React.Re
   if (!me?.isSuperAdmin) redirect("/"); // ili /og/ghg
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <aside style={{ width: 280, padding: 16, borderRight: "1px solid rgba(255,255,255,0.1)" }}>
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>Core Admin</div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <Link href="/core-admin">Overview</Link>
-          <Link href="/core-admin/tenants">Tenants</Link>
-          <Link href="/core-admin/licensing">Licensing</Link>
-        </nav>
-      </aside>
-      <main style={{ flex: 1, padding: 24 }}>{children}</main>
-    </div>
-  );
+  <div className="min-h-screen flex">
+    <aside className="w-[280px] p-4 border-r border-white/10">
+      <div className="font-bold mb-3">Core Admin</div>
+      <nav className="flex flex-col gap-2 text-sm">
+        <Link className="text-white/80 hover:text-white" href="/core-admin/tenant-control">Tenant Control</Link>
+        <Link className="text-white/80 hover:text-white" href="/core-admin/tenants">Tenants</Link>
+        <Link className="text-white/80 hover:text-white" href="/core-admin/licensing">Licensing</Link>
+      </nav>
+    </aside>
+    <main className="flex-1 p-6">{children}</main>
+  </div>
+);
 }

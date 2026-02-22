@@ -23,7 +23,7 @@ function addMonthsSafe(d: Date, months: number) {
   const x = new Date(d);
   const day = x.getDate();
   x.setMonth(x.getMonth() + months);
-  if (x.getDate() < day) x.setDate(0); // clamp end-of-month
+  if (x.getDate() < day) x.setDate(0);
   return x;
 }
 
@@ -31,7 +31,7 @@ function addYearsSafe(d: Date, years: number) {
   const x = new Date(d);
   const m = x.getMonth();
   x.setFullYear(x.getFullYear() + years);
-  if (x.getMonth() !== m) x.setDate(0); // Feb 29 rollover
+  if (x.getMonth() !== m) x.setDate(0);
   return x;
 }
 
@@ -68,7 +68,11 @@ export async function POST(req: Request) {
 
     const tenantId = String(body.tenantId || "");
     const email = String(body.email || "").trim().toLowerCase();
-    const role = String(body.role || "VIEWER");
+
+    // IMPORTANT:
+    // - For Core Admin "Invite Tenant Admin", we always invite as ADMIN.
+    // - We ignore body.role for this flow to keep it locked.
+    const role = "ADMIN";
 
     console.log("[INVITES] payload:", { tenantId, email, role });
 
@@ -76,6 +80,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "BAD_REQUEST" }, { status: 400 });
     }
 
+    // Permission:
+    // - SuperAdmin can do everything
+    // - otherwise tenant admin can invite (kept for tenant-level use)
     const okAdmin = me.isSuperAdmin ? true : await requireAdmin(tenantId, me.id);
     console.log("[INVITES] okAdmin:", okAdmin);
 
@@ -94,8 +101,34 @@ export async function POST(req: Request) {
     const now = new Date();
     const expiresAt = computeExpiresAt(now, { amount, unit });
 
-    console.log("[INVITES] validity/expiresAt:", { amount, unit, expiresAt: expiresAt.toISOString() });
+    console.log("[INVITES] validity/expiresAt:", {
+      amount,
+      unit,
+      expiresAt: expiresAt.toISOString(),
+    });
 
+    // ✅ STEP 1: Ensure User exists (must be in Users list before invite)
+    const invitedUser = await db.user.upsert({
+      where: { email },
+      update: {},
+      create: { email },
+      select: { id: true, email: true },
+    });
+
+    // ✅ STEP 2: Ensure Membership exists and mark as INVITED admin
+    await db.membership.upsert({
+      where: { tenantId_userId: { tenantId, userId: invitedUser.id } },
+      update: { role: "ADMIN", status: "INVITED" },
+      create: {
+        tenantId,
+        userId: invitedUser.id,
+        role: "ADMIN",
+        status: "INVITED",
+      },
+      select: { id: true },
+    });
+
+    // ✅ STEP 3: Create invite token + record
     const token = generateInviteToken();
     const tokenHash = hashToken(token);
 
@@ -115,14 +148,13 @@ export async function POST(req: Request) {
 
     console.log("[INVITES] invite created:", invite.id);
 
-    const baseUrl = "https://app.dig-ops.com"; // production domain
-const inviteUrl = `${baseUrl}/invite/${token}`;
-
+    // ✅ Use dynamic base URL (no hardcode)
+    const baseUrl = getBaseUrl();
+    const inviteUrl = `${baseUrl}/invite/${token}`;
 
     let emailed = false;
     let emailError: string | null = null;
 
-    // ✅ email block try/catch (only for email)
     try {
       const tenant = await db.tenant.findUnique({
         where: { id: tenantId },
@@ -147,7 +179,7 @@ const inviteUrl = `${baseUrl}/invite/${token}`;
         licenseStart: invite.createdAt,
         licenseEnd: invite.expiresAt,
         issuedTo: email,
-        issuedBy: "IFlowX Admin",
+        issuedBy: "IFlowX Super Admin",
       });
 
       emailed = true;
@@ -163,6 +195,8 @@ const inviteUrl = `${baseUrl}/invite/${token}`;
       expiresAt,
       emailed,
       emailError,
+      ensuredUser: true,
+      ensuredMembership: true,
     });
   } catch (e: any) {
     console.error("[INVITES] FATAL:", e);
